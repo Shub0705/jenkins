@@ -1,0 +1,57 @@
+$sudo wget -O /etc/yum.repos.d/jenkins.repo \
+>     https://pkg.jenkins.io/redhat-stable/jenkins.repo
+$sudo rpm --import https://pkg.jenkins.io/redhat-stable/jenkins.io-2023.key
+$sudo dnf upgrade
+$sudo yum install java-17 -y
+$sudo dnf install fontconfig
+$sudo dnf install jenkins
+$sudo systemctl daemon-reload
+$sudo systemctl start jenkins
+$sudo systemctl enable jenkins
+$sudo yum install docker -y
+$sudo yum install git -y
+$sudo systemctl start docker
+$sudo systemctl enable docker
+$copy IP and go to web and upload like {this=(172.0.0.0:8080)}
+
+$sudo systemctl status jenkins--first line copy key and upload in key section---
+go to New Item
+Enter an item name (give any name) ----> click pipeline----> ok----> scorldown-->and go to script
+
+-------------privet repo-------------
+-----create Git token-----
+
+1)Go to git your profile--->setting-->developer setting--->personal access tokens-- classic---> generate new classic-->note(name)--->days--->select repo-->generate tocker 
+
+2)Go to jenkins dashbord--->manage jenkins---->Credentials---->System----->Global credentials (unrestricted)------>Username with password------>username(git repo name)----->Password(upload-tocken)--> ID(any id)---> create
+
+3)Dashbord----new item----general----Pipeline Syntax--->Sample Step(checkout: check out from)-->Repository URL--->Credentials--->upload-key-->generate pipeline script--> copy and git-checkout--upload
+ 
+pipeline {
+    agent any
+
+    stages {
+        stage('git checkout') {
+            steps {
+                checkout scmGit(branches: [[name: '*/main']], extensions: [], userRemoteConfigs: [[credentialsId: 'UG-id', url: 'https://github.com/cholekulche/BE-application-student.git']])
+            }
+        }
+        stage('build') {
+            steps {
+                sh 'sudo docker build -t red .'
+            }
+        }
+        stage('ecr push') {
+            steps {
+                sh '''
+                aws ecr get-login-password --region ap-southeast-2 | sudo docker login --username AWS --password-stdin 529088278501.dkr.ecr.ap-southeast-2.amazonaws.com
+                sudo docker tag red:latest 529088278501.dkr.ecr.ap-southeast-2.amazonaws.com/red:latest
+                sudo docker push 529088278501.dkr.ecr.ap-southeast-2.amazonaws.com/red:latest
+                '''
+            }
+        }
+    }
+}
+-----Tag----
+1)New item -->general--->select(This project is parameterised)--->String Parameter--->any name--> value(branch name)--->apply-->save
+2)Go to pipeline replace--latest with ${branch name}
