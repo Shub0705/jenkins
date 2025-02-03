@@ -1,0 +1,81 @@
+---------jenkins use with sonar------------
+instance lunch--->ecr full acces
+
+sudo yum install docker -y
+sudo systemctl start docker 
+sudo systemctl enable docker
+sudo docker run -d --privileged -P --user root  -v /mnt:/var/jenkins_home -v /var/run/docker.sock:/var/run/docker.sock jenkins/jenkins
+sudo docker ps
+sudo docker logs (container ID)------->{Jenkins key present here}
+---->take instance IP hit web browser (198.1.1.1:32769)
+sudo docker pull sonarqube
+sudo docker run -d -P sonarqube
+sudo docker ps 
+--->take instance IP hit web browser (198.1.1.1:32770)
+Go to the jenkins container(id) and install git---> apt install git -y exit
+sudo docker pull maven
+sudo docker run -d -it maven bash
+Go to  maven container --->git clone (pritam sir repo[onlinebook store] paste) 
+ls
+cd online book
+mvn package 
+--------------------------AWS--------------------
+
+Go to IAM user 
+create User--->attach policy---->ECR full Access----> create Access-key---->(save key on notepad)
+
+------------------------jenkins---------------------
+
+Go to dashboard--->manage----->download Plugin----> 1)AWS 2)Stage view
+Go to dashboard--->manage--->Credentials--->System--->Global credentials---->kind --->AWS cRE
+Go to New Item---->Pipeline--->withCredentials--->Generet pipeline--->copy Generet pipeline
+Go to dashboard--->manage--->Credentials--->System--->Global credentials---->repo name(pritam sir and TOCKEN)
+Go to New Item---->Pipeline--->checkout---->Generet pipeline--->copy Generet pipeline
+
+
+------------------pipeline-----------------
+pipeline {
+    agent any
+
+    stages {
+        stage('git checkout') {
+            steps {
+                checkout scmGit(branches: [[name: '*/master']], extensions: [], userRemoteConfigs: [[credentialsId: 'pop', url: 'https://github.com/Pritam-Khergade/onlinebookstore.git']])
+            }
+        }
+        stage('build') {
+            steps {
+                sh '''
+                apt update
+                apt install docker.io -y
+                '''
+                sh 'docker build -t bhai .'
+            }
+        }
+        stage('aws config') {
+            steps {
+                withCredentials([aws(accessKeyVariable: 'AWS_ACCESS_KEY_ID', credentialsId: 'jenkins-user', secretKeyVariable: 'AWS_SECRET_ACCESS_KEY')])
+        sh ''' 
+           mkdir -p ~/aws
+                  touch ~/aws/credentials
+
+           cat << EOF > ~/aws/credentials
+                [default]
+                aws_access_key_id = ${AWS_ACCESS_KEY_ID}
+                aws_secret_access_key = ${AWS_SECRET_ACCESS_KEY}
+                 '''
+                 sh ''' aws s3 ls  '''
+            }
+        }
+        stage('ecr push') {
+            steps {
+                sh '''
+                aws ecr get-login-password --region ap-southeast-2 | docker login --username AWS --password-stdin 529088278501.dkr.ecr.ap-southeast-2.amazonaws.com
+                docker tag bhai:latest 529088278501.dkr.ecr.ap-southeast-2.amazonaws.com/bhai:latest
+                docker push 529088278501.dkr.ecr.ap-southeast-2.amazonaws.com/bhai:latest
+                '''
+            }
+        }
+    }
+}
+
