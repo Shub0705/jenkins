@@ -1,0 +1,31 @@
+----------Launch instances---------------
+sudo yum install docker -y
+sudo systemctl start docker 
+sudo systemctl enable docker
+sudo yum install git -y
+sudo docker run -d --privileged -P --user root  -v /mnt:/var/jenkins_home -v /var/run/docker.sock:/var/run/docker.sock jenkins/jenkins
+sudo docker ps
+sudo docker logs (container id)
+--copy key--->Go to web browsre hit ip (like this= 192.1.0.1:32769) 
+sudo docker run -d -P sonarqube
+sudo docker ps
+Go to web browsre hit ip (like this= 192.1.0.1:32770)
+Create a local project---> netx-->Define a specific setting for this project----> create project--->locally---> generate TOKEN-->copy mnv tocke (paste in dockerfile) 
+git clone (repo https link)
+ls
+cd onlinebookstore 
+vim dockerfile
+ FROM maven as builder
+ COPY . /mnt/onlinebookstore/.
+ WORKDIR /mnt/onlinebookstore
+ RUN mvn clean verify sonar:sonar \
+  -Dsonar.projectKey=hello \
+  -Dsonar.projectName='hello' \
+  -Dsonar.host.url=http://54.79.144.199:32770 \
+  -Dsonar.token=sqp_7929dd9a483f51cd4caf103a6c7dd8954427b66f
+ RUN mvn package
+
+ FROM tomcat
+ COPY --from=builder /mnt/onlinebookstore/target/*.war webapps/.
+sudo docker build -t dockerfile .
+ Go to sonarqube and see the interface
